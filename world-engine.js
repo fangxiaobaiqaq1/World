@@ -465,12 +465,17 @@
       // ========== 事件绑定 ==========
       const ctx = SillyTavern.getContext();
       if (ctx && ctx.eventSource) {
-        const autoEvolveEvent = ctx.event_types?.GENERATION_ENDED || ctx.event_types?.MESSAGE_RECEIVED || 'message_received';
-        ctx.eventSource.on(autoEvolveEvent, onMessageReceived);
+        // 流式靠 GENERATION_ENDED、非流式靠 MESSAGE_RECEIVED 才有就绪正文，两个都绑。
+        // 重复触发无害：onMessageReceived 有防抖、runAutoEvolution 按 messageKey 去重。
+        const autoEvolveEvents = [];
+        if (ctx.event_types?.GENERATION_ENDED) autoEvolveEvents.push(ctx.event_types.GENERATION_ENDED);
+        if (ctx.event_types?.MESSAGE_RECEIVED) autoEvolveEvents.push(ctx.event_types.MESSAGE_RECEIVED);
+        if (autoEvolveEvents.length === 0) autoEvolveEvents.push('message_received');
+        autoEvolveEvents.forEach(ev => ctx.eventSource.on(ev, onMessageReceived));
         ctx.eventSource.on(ctx.event_types?.CHAT_LOADED || 'chat_loaded', onChatLoaded);
         ctx.eventSource.on(ctx.event_types?.MESSAGE_SWIPED || 'message_swiped', onMessageSwiped);
         ctx.eventSource.on(ctx.event_types?.GENERATION_STARTED || 'generation_started', onGenerationStarted);
-        console.log('[世界引擎] 事件绑定成功，自动推演事件:', autoEvolveEvent);
+        console.log('[世界引擎] 事件绑定成功，自动推演事件:', autoEvolveEvents.join(', '));
       } else {
         console.warn('[世界引擎] 无法绑定事件');
       }
