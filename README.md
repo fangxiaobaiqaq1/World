@@ -1,8 +1,10 @@
 # 世界引擎 World Engine
 
-SillyTavern 第三方扩展 — 独立 API 驱动的世界推演引擎。
+SillyTavern 第三方扩展 — 独立 API 驱动的世界推演引擎。当前版本 **v2.3.19**。
 
 对话后自动推演世界状态、注入上下文到 prompt，让 AI 角色扮演中的世界真正"活"起来：NPC 有自己的生活，事件链自行推进，势力兴衰更替，风声四起，经济波动——一切不以玩家为中心。
+
+**🏷 重 roll 注入语义**：重 roll（swipe / 重新生成）同一楼正文时，注入「这层正文产生前的世界状态」（存档点），而非「基于旧正文推演出的当前状态」。推演本身在当前轮 state 上重新推演、轮次不变。redo（手动卫星按钮）保持「回存档点轮次重推」原义。
 
 ## 功能概览
 
@@ -10,6 +12,19 @@ SillyTavern 第三方扩展 — 独立 API 驱动的世界推演引擎。
 - 每轮对话后自动（或手动）调用外部 OpenAI 兼容 API 推演世界变化
 - 支持「每 N 轮推演」和「按故事内时间推演」两种节奏模式
 - 推演结果自动注入 prompt，AI 正文写作时能感知世界动态
+- **引擎预设系统**（v2.3.9）：推演 prompt 可编辑、可保存、可切换预设
+- **正则过滤**（v2.3.12）：喂推演前按正则清洗对话文本（支持简单模式标签勾选生成）
+- **超时保护**（v2.3.15）：API 请求超时不永久挂起自动推演
+
+**注入系统**
+- 世界状态自动注入 prompt（role: system，In-Chat 插入聊天流）
+- **重 roll 注入存档点**（v2.3.14→v2.3.19）：同层 swipe/regenerate 时注入「这层正文产生前的世界状态」
+- **插头总开关**（v2.3.14）：一键关/开推演与注入，停在世界面板小地球左侧
+- **注入自检查看器**（v2.3.16，只读）：核对世界状态是否真进了发给大模型的最终 prompt——按 role 分好消息链，每条可展开看完整内容
+
+**诊断与调试**（v2.3.12+）
+- 面板右上角「诊断」按钮 → 一键导出诊断包（JSON，含设置 / 存档 / 推演提示词 / 注入快照 / 控制台关键日志等），附解析 UI
+- 诊断包不带隐私数据（角色卡原文 / 世界书原文 / 聊天正文不含），脱敏发 issue
 
 **活体引擎规则**（内置 12 模块）
 - 世界运转、事件链、风声传播、势力体系、声誉系统、经济系统、暗箱操作、区域突发事件等
@@ -98,20 +113,23 @@ git clone https://github.com/DlSNlGHT/World world-engine
 ## 项目结构
 
 ```
-world-engine.js           主入口：模块加载、事件绑定、注入逻辑
-world-engine-core.js      核心数据结构与存储（按聊天 ID 隔离）
-world-engine-store.js     存储中间层（IndexedDB + localStorage 回退）
-world-engine-api.js       独立 API 调用（OpenAI 兼容格式）
-world-engine-evolution.js 世界推演（活体引擎规则 + 骰子系统）
-world-engine-inject.js    构建注入上下文（条件筛选关键信息）
-world-engine-rules-loader.js  内置全部推演规则（12 模块）
-world-engine-ledger.js    重大事件账本（记录 Lv3/4 变化）
-world-engine-worldbook.js 后台推演世界书选择
-world-engine-chatcache.js 酒馆缓存与存档（跨设备同步）
-world-engine-ui.js        完整 UI 面板
-style.css                 样式
-manifest.json             SillyTavern 扩展清单
-worldmap.svg              世界地图素材
+world-engine.js                   主入口：模块加载、事件绑定、注入逻辑
+world-engine-core.js              核心数据结构与存储（按聊天 ID 隔离）
+world-engine-store.js             存储中间层（IndexedDB + localStorage 回退）
+world-engine-preset.js            引擎预设系统（推演 prompt 可编辑/预设）
+world-engine-api.js               独立 API 调用（OpenAI 兼容格式，含超时保护）
+world-engine-evolution.js         世界推演（活体引擎规则 + 骰子系统 + 基底三分）
+world-engine-inject.js            构建注入上下文（条件筛选关键信息）
+world-engine-inject-inspector.js  注入自检查看器（解耦只读，核对状态是否进正文）
+world-engine-rules-loader.js      内置全部推演规则（12 模块）
+world-engine-ledger.js            重大事件账本（记录 Lv3/4 变化）
+world-engine-worldbook.js         后台推演世界书选择
+world-engine-chatcache.js         酒馆缓存与存档（跨设备同步）
+world-engine-diag.js              诊断导出
+world-engine-ui.js                完整 UI 面板（含内联编辑/诊断卡/注入自检/更新日志）
+style.css                         样式
+manifest.json                     SillyTavern 扩展清单
+worldmap.svg                      世界地图素材
 ```
 
 ## 技术要点
